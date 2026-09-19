@@ -1,0 +1,4 @@
+google-genai
+python-dotenv==1.0.1
+groq
+streamlit

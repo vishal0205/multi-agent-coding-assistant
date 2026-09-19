@@ -1,0 +1,17 @@
+{
+  "task_id": "task_06_unique_chars",
+  "task_description": "Write a function called has_unique_chars(s) that returns True if all characters in the string are unique.",
+  "timestamp": "2026-09-10T19:28:32.748212",
+  "success": true,
+  "attempts_taken": 1,
+  "test_code": "assert has_unique_chars(\"abcde\") == True\nassert has_unique_chars(\"hello\") == False\nassert has_unique_chars(\"\") == True\nassert has_unique_chars(\"aA\") == True\nassert has_unique_chars(\"abcdea\") == False\nprint(\"ALL TESTS PASSED\")",
+  "attempts_log": [
+    {
+      "attempt": 1,
+      "code": "def has_unique_chars(s):\n    return len(s) == len(set(s))",
+      "test_code": "assert has_unique_chars(\"abcde\") == True\nassert has_unique_chars(\"hello\") == False\nassert has_unique_chars(\"\") == True\nassert has_unique_chars(\"aA\") == True\nassert has_unique_chars(\"abcdea\") == False\nprint(\"ALL TESTS PASSED\")",
+      "passed": true,
+      "output": "ALL TESTS PASSED\n"
+    }
+  ]
+}

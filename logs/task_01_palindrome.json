@@ -1,0 +1,17 @@
+{
+  "task_id": "task_01_palindrome",
+  "task_description": "Write a function called is_palindrome(s) that returns True if a string is a palindrome, ignoring case and spaces.",
+  "timestamp": "2026-09-10T19:27:55.932636",
+  "success": true,
+  "attempts_taken": 1,
+  "test_code": "assert is_palindrome(\"Racecar\") == True\nassert is_palindrome(\"A man a plan a canal Panama\") == True\nassert is_palindrome(\"hello\") == False\nassert is_palindrome(\"\") == True\nassert is_palindrome(\"   \") == True\nprint(\"ALL TESTS PASSED\")",
+  "attempts_log": [
+    {
+      "attempt": 1,
+      "code": "def is_palindrome(s):\n    cleaned = \"\".join(s.split()).lower()\n    return cleaned == cleaned[::-1]",
+      "test_code": "assert is_palindrome(\"Racecar\") == True\nassert is_palindrome(\"A man a plan a canal Panama\") == True\nassert is_palindrome(\"hello\") == False\nassert is_palindrome(\"\") == True\nassert is_palindrome(\"   \") == True\nprint(\"ALL TESTS PASSED\")",
+      "passed": true,
+      "output": "ALL TESTS PASSED\n"
+    }
+  ]
+}

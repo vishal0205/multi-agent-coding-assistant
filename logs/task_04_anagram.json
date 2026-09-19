@@ -1,0 +1,17 @@
+{
+  "task_id": "task_04_anagram",
+  "task_description": "Write a function called is_anagram(a, b) that returns True if two strings are anagrams of each other, ignoring case and spaces.",
+  "timestamp": "2026-09-10T19:28:12.235513",
+  "success": true,
+  "attempts_taken": 1,
+  "test_code": "assert is_anagram(\"listen\", \"silent\") == True\nassert is_anagram(\"Listen\", \"Silent\") == True\nassert is_anagram(\"conversation\", \"voices rant on\") == True\nassert is_anagram(\"hello\", \"world\") == False\nassert is_anagram(\"\", \"\") == True\nprint(\"ALL TESTS PASSED\")",
+  "attempts_log": [
+    {
+      "attempt": 1,
+      "code": "def is_anagram(a, b):\n    return sorted(a.lower().replace(\" \", \"\")) == sorted(b.lower().replace(\" \", \"\"))",
+      "test_code": "assert is_anagram(\"listen\", \"silent\") == True\nassert is_anagram(\"Listen\", \"Silent\") == True\nassert is_anagram(\"conversation\", \"voices rant on\") == True\nassert is_anagram(\"hello\", \"world\") == False\nassert is_anagram(\"\", \"\") == True\nprint(\"ALL TESTS PASSED\")",
+      "passed": true,
+      "output": "ALL TESTS PASSED\n"
+    }
+  ]
+}

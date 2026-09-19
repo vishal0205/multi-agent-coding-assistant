@@ -1,0 +1,17 @@
+{
+  "task_id": "task_05_binary_search",
+  "task_description": "Write a function called binary_search(arr, target) that returns the index of target in a sorted list arr, or -1 if not found.",
+  "timestamp": "2026-09-10T19:28:27.541310",
+  "success": true,
+  "attempts_taken": 1,
+  "test_code": "assert binary_search([1,2,3,4,5], 3) == 2\nassert binary_search([1,2,3,4,5], 1) == 0\nassert binary_search([1,2,3,4,5], 5) == 4\nassert binary_search([1,2,3,4,5], 6) == -1\nassert binary_search([], 1) == -1\nprint(\"ALL TESTS PASSED\")",
+  "attempts_log": [
+    {
+      "attempt": 1,
+      "code": "def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1",
+      "test_code": "assert binary_search([1,2,3,4,5], 3) == 2\nassert binary_search([1,2,3,4,5], 1) == 0\nassert binary_search([1,2,3,4,5], 5) == 4\nassert binary_search([1,2,3,4,5], 6) == -1\nassert binary_search([], 1) == -1\nprint(\"ALL TESTS PASSED\")",
+      "passed": true,
+      "output": "ALL TESTS PASSED\n"
+    }
+  ]
+}
