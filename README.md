@@ -2,7 +2,7 @@
 
 A coding agent system where two independent AI models collaborate to write and verify code: a **coder agent** writes a solution, an **independent test generator agent** writes the tests, and a **supervisor loop** runs them together — retrying with self-correction until the code passes, all inside a sandboxed execution environment.
 
-**[Live demo](#)** · **[Benchmark results](#benchmark-results)**
+**[Live demo](https://multi-agent-coding-assistant-9mreb4hcxzwjaximxgf8d4.streamlit.app/)** · **[Benchmark results](#benchmark-results)**
 
 ---
 
