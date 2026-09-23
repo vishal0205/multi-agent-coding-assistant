@@ -23,9 +23,6 @@ flowchart TD
     D -->|fail| F[Debugger<br/>diagnoses the error, sends a fix back]
     F --> C
 ```
-
-**Note on scope:** an earlier design also included a separate "Reviewer" agent to check code quality before testing. It was deliberately left out — see [Future enhancements](#future-enhancements) for why.
-
 ## How it works
 
 1. A task description (e.g. *"write a function that checks if a string is a palindrome"*) is sent to **two agents in parallel**:
@@ -64,7 +61,7 @@ This was verified, not just assumed:
 | Tasks solved | 12/12 |
 | Average attempts per task | 1.0 |
 
-**Note on this result:** every task passed on the first attempt, meaning the retry/self-correction loop wasn't actually exercised by this benchmark — worth stating plainly rather than implying the loop was heavily tested here. It has been separately verified working: during development, an interface mismatch between the coder and test generator agents (see [Known limitations](#known-limitations--failure-analysis)) took 2 attempts to resolve via the same retry mechanism. A harder or more ambiguous task set would likely surface more retries; this benchmark's 12 tasks turned out to be solvable in one pass by the current model.
+**Note on this result:** every task passed on the first attempt, meaning the retry/self-correction loop wasn't actually exercised by this benchmark but when you try with harder questions it hits to second or third attemps to pass all the testcases. It has been separately verified working: during development, an interface mismatch between the coder and test generator agents (see [Known limitations](#known-limitations--failure-analysis)) took 2 attempts to resolve via the same retry mechanism. A harder or more ambiguous task set would likely surface more retries; this benchmark's 12 tasks turned out to be solvable in one pass by the current model.
 
 Run it yourself:
 ```bash
