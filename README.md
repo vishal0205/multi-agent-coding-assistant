@@ -2,6 +2,7 @@
 
 A coding agent system where two independent AI models collaborate to write and verify code: a **coder agent** writes a solution, an **independent test generator agent** writes the tests, and a **supervisor loop** runs them together — retrying with self-correction until the code passes, all inside a sandboxed execution environment.
 
+
 **[Live demo](https://multi-agent-coding-assistant-9mreb4hcxzwjaximxgf8d4.streamlit.app/)** · **[Benchmark results](#benchmark-results)**
 
 ---
@@ -15,7 +16,7 @@ A single model writing both the code and its own tests can pass its own blind sp
 ```mermaid
 flowchart TD
     A[Task input] --> B[Test generator agent<br/>Groq / GPT-OSS-120B]
-    A --> C[Coder agent<br/>Gemini 3.6 Flash]
+    A --> C[Coder agent<br/>Gemini 3.5 Flash-Lite]
     B --> D[Sandbox<br/>Docker locally, timeout-protected fallback in the cloud]
     C --> D
     D -->|pass| E[Logger<br/>saves code, tests, attempt history]
@@ -23,6 +24,7 @@ flowchart TD
     F --> C
 ```
 
+**Note on scope:** an earlier design also included a separate "Reviewer" agent to check code quality before testing. It was deliberately left out — see [Future enhancements](#future-enhancements) for why.
 
 ## How it works
 
@@ -47,7 +49,7 @@ This was verified, not just assumed:
 
 ## Tech stack
 
-- **Coder agent:** Google Gemini API (`gemini-3.6-flash`)
+- **Coder agent:** Google Gemini API (`gemini-3.5-flash-lite` — chosen over the full Flash model for its much higher free-tier daily quota, making the benchmark actually reproducible without hitting rate limits; swapping back to `gemini-3.6-flash` is a one-line change)
 - **Test generator agent:** Groq API (`openai/gpt-oss-120b`)
 - **Sandbox:** Docker (local) / subprocess with timeout (cloud fallback)
 - **UI:** Streamlit
@@ -59,8 +61,10 @@ This was verified, not just assumed:
 
 | Metric | Result |
 |---|---|
-| Tasks solved | _fill in from your `run_benchmark.py` summary output_ |
-| Average attempts per task | _fill in_ |
+| Tasks solved | 12/12 |
+| Average attempts per task | 1.0 |
+
+**Note on this result:** every task passed on the first attempt, meaning the retry/self-correction loop wasn't actually exercised by this benchmark — worth stating plainly rather than implying the loop was heavily tested here. It has been separately verified working: during development, an interface mismatch between the coder and test generator agents (see [Known limitations](#known-limitations--failure-analysis)) took 2 attempts to resolve via the same retry mechanism. A harder or more ambiguous task set would likely surface more retries; this benchmark's 12 tasks turned out to be solvable in one pass by the current model.
 
 Run it yourself:
 ```bash

@@ -21,7 +21,7 @@ def clean_code(raw: str) -> str:
 def call_gemini(prompt: str, max_retries: int = 3) -> str:
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.models.generate_content(model="gemini-3.6-flash", contents=prompt)
+            response = client.models.generate_content(model="gemini-3.5-flash-lite", contents=prompt)
             return response.text
         except genai_errors.ServerError as e:
             wait = 2 ** attempt
