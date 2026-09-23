@@ -1,0 +1,17 @@
+{
+  "task_id": "task_08_word_count",
+  "task_description": "Write a function called word_frequency(text) that returns a dictionary mapping each word (lowercase) to how many times it appears in the text.",
+  "timestamp": "2026-09-23T08:56:22.065475",
+  "success": true,
+  "attempts_taken": 1,
+  "test_code": "assert solution(\"\") == {}\nassert solution(\"Hello\") == {\"hello\": 1}\nassert solution(\"Hello world hello\") == {\"hello\": 2, \"world\": 1}\nassert solution(\"One two three two one\") == {\"one\": 2, \"two\": 2, \"three\": 1}\nassert solution(\"a A a a\") == {\"a\": 4}\nprint(\"ALL TESTS PASSED\")",
+  "attempts_log": [
+    {
+      "attempt": 1,
+      "code": "import re\nfrom collections import Counter\n\ndef solution(text):\n    words = re.findall(r'\\b\\w+\\b', text.lower())\n    return dict(Counter(words))",
+      "test_code": "assert solution(\"\") == {}\nassert solution(\"Hello\") == {\"hello\": 1}\nassert solution(\"Hello world hello\") == {\"hello\": 2, \"world\": 1}\nassert solution(\"One two three two one\") == {\"one\": 2, \"two\": 2, \"three\": 1}\nassert solution(\"a A a a\") == {\"a\": 4}\nprint(\"ALL TESTS PASSED\")",
+      "passed": true,
+      "output": "ALL TESTS PASSED\n"
+    }
+  ]
+}

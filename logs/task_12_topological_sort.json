@@ -1,0 +1,17 @@
+{
+  "task_id": "task_12_topological_sort",
+  "task_description": "Write a function called topological_sort(graph) that takes a dictionary representing a directed acyclic graph (node -> list of nodes it points to) and returns a valid topological ordering as a list.",
+  "timestamp": "2026-09-23T08:56:41.546512",
+  "success": true,
+  "attempts_taken": 1,
+  "test_code": "assert (order := solution({})) == []\nassert (order := solution({'x':[]})) == ['x']\nassert (order := solution({'a':['b','c'], 'b':['d'], 'c':['d'], 'd':[]})) and set(order) == {'a','b','c','d'} and all(order.index(u) < order.index(v) for u,vs in {'a':['b','c'], 'b':['d'], 'c':['d'], 'd':[]}.items() for v in vs)\nassert (order := solution({'a':[], 'b':[], 'c':[]})) and set(order) == {'a','b','c'} and len(order) == 3\nassert (order := solution({'5':['11'], '7':['11','8'], '3':['8','10'], '11':['2','9','10'], '8':['9'], '2':[], '9':[], '10':[]})) and set(order) == {'5','7','3','11','8','2','9','10'} and all(order.index(u) < order.index(v) for u,vs in {'5':['11'], '7':['11','8'], '3':['8','10'], '11':['2','9','10'], '8':['9'], '2':[], '9':[], '10':[]}.items() for v in vs)\nprint(\"ALL TESTS PASSED\")",
+  "attempts_log": [
+    {
+      "attempt": 1,
+      "code": "def solution(graph):\n    visited = set()\n    temp_marked = set()\n    order = []\n\n    def visit(node):\n        if node in temp_marked:\n            raise ValueError(\"Graph has a cycle\")\n        if node not in visited:\n            temp_marked.add(node)\n            for neighbor in graph.get(node, []):\n                visit(neighbor)\n            temp_marked.remove(node)\n            visited.add(node)\n            order.append(node)\n\n    for node in graph:\n        if node not in visited:\n            visit(node)\n\n    return order[::-1]",
+      "test_code": "assert (order := solution({})) == []\nassert (order := solution({'x':[]})) == ['x']\nassert (order := solution({'a':['b','c'], 'b':['d'], 'c':['d'], 'd':[]})) and set(order) == {'a','b','c','d'} and all(order.index(u) < order.index(v) for u,vs in {'a':['b','c'], 'b':['d'], 'c':['d'], 'd':[]}.items() for v in vs)\nassert (order := solution({'a':[], 'b':[], 'c':[]})) and set(order) == {'a','b','c'} and len(order) == 3\nassert (order := solution({'5':['11'], '7':['11','8'], '3':['8','10'], '11':['2','9','10'], '8':['9'], '2':[], '9':[], '10':[]})) and set(order) == {'5','7','3','11','8','2','9','10'} and all(order.index(u) < order.index(v) for u,vs in {'5':['11'], '7':['11','8'], '3':['8','10'], '11':['2','9','10'], '8':['9'], '2':[], '9':[], '10':[]}.items() for v in vs)\nprint(\"ALL TESTS PASSED\")",
+      "passed": true,
+      "output": "ALL TESTS PASSED\n"
+    }
+  ]
+}
