@@ -12,43 +12,73 @@ st.caption("Describe a task. A coder agent (Gemini) writes the solution, an inde
 sandbox_mode = "Docker sandbox (full isolation)" if docker_available() else "Timeout-protected fallback (Docker unavailable in this environment)"
 st.info(f"Execution mode: {sandbox_mode}")
 
+# --- Example task buttons ---
+EXAMPLES = {
+    "FizzBuzz": "Write a function called fizzbuzz(n) that returns a list of strings from 1 to n, replacing multiples of 3 with 'Fizz', multiples of 5 with 'Buzz', and multiples of both with 'FizzBuzz'.",
+    "Binary Search": "Write a function called binary_search(arr, target) that returns the index of target in a sorted list arr, or -1 if not found.",
+    "4Sum (hard)": "Given an array nums of n integers, return an array of all unique quadruplets [a, b, c, d] from nums such that they are distinct indices and a + b + c + d == target. Return no duplicate quadruplets.",
+}
+
+st.write("**Try an example:**")
+cols = st.columns(len(EXAMPLES))
+for col, (label, task_text) in zip(cols, EXAMPLES.items()):
+    if col.button(label):
+        st.session_state["task_input"] = task_text
+
 task = st.text_area(
     "Describe the coding task",
+    key="task_input",
     placeholder="e.g. Write a function called is_prime(n) that returns True if n is a prime number."
 )
 
+# --- Solve button with error handling ---
 if st.button("Solve", type="primary") and task.strip():
-    with st.status("Generating test cases (test generator agent)...", expanded=True) as status:
-        test_code = generate_test_cases(task)
-        st.code(test_code, language="python")
-        status.update(label="Test cases generated", state="complete")
+    try:
+        with st.status("Generating test cases (test generator agent)...", expanded=True) as status:
+            test_code = generate_test_cases(task)
+            st.code(test_code, language="python")
+            status.update(label="Test cases generated", state="complete")
 
-    code = generate_code(task)
-    success = False
+        code = generate_code(task)
+        success = False
 
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        with st.status(f"Attempt {attempt}: running code against tests...", expanded=True) as status:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            with st.status(f"Attempt {attempt}: running code against tests...", expanded=True) as status:
+                st.code(code, language="python")
+                passed, output = run_tests(code, test_code)
+
+                if passed:
+                    status.update(label=f"Attempt {attempt}: PASSED", state="complete")
+                    success = True
+                    break
+                else:
+                    status.update(label=f"Attempt {attempt}: FAILED — retrying", state="error")
+                    st.text(output.strip()[:400])
+                    code = fix_code(task, code, output)
+
+        st.divider()
+        if success:
+            st.success(f"Solved in {attempt} attempt(s)")
+            st.subheader("Final solution")
             st.code(code, language="python")
-            passed, output = run_tests(code, test_code)
+        else:
+            st.error(f"Could not solve within {MAX_ATTEMPTS} attempts")
+            st.subheader("Last attempted solution")
+            st.code(code, language="python")
 
-            if passed:
-                status.update(label=f"Attempt {attempt}: PASSED", state="complete")
-                success = True
-                break
-            else:
-                status.update(label=f"Attempt {attempt}: FAILED — retrying", state="error")
-                st.text(output.strip()[:400])
-                code = fix_code(task, code, output)
-
-    st.divider()
-    if success:
-        st.success(f"Solved in {attempt} attempt(s)")
-        st.subheader("Final solution")
-        st.code(code, language="python")  # st.code includes a built-in copy button
-    else:
-        st.error(f"Could not solve within {MAX_ATTEMPTS} attempts")
-        st.subheader("Last attempted solution")
-        st.code(code, language="python")
+    except Exception as e:
+        error_msg = str(e).lower()
+        st.divider()
+        if "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
+            st.error("The AI service has hit its free-tier request limit for right now. Please try again in a few minutes.")
+        elif "503" in error_msg or "unavailable" in error_msg:
+            st.error("The AI service is temporarily overloaded. Please try again in a moment.")
+        elif "timeout" in error_msg:
+            st.error("The request took too long and timed out. Please try again.")
+        else:
+            st.error("Something went wrong while processing this task. Please try again, or try a different task description.")
+        with st.expander("Technical details (for debugging)"):
+            st.text(str(e))
 
 st.divider()
 st.subheader("Benchmark results")
