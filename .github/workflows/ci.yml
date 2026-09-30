@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sandbox-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build sandbox Docker image
+        run: docker build -t coding-agent-sandbox .
+
+      - name: Run sandbox safety tests
+        run: python test_sandbox_safety.py
+
+      - name: Check Python syntax across the project
+        run: python -m py_compile agent.py logger.py test_generator.py tasks.py run_benchmark.py streamlit_app.py config.py
