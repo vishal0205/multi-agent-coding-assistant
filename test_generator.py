@@ -1,8 +1,6 @@
 import os
 from dotenv import load_dotenv
 from groq import Groq
-from groq import Groq
-from dotenv import load_dotenv
 from config import get_secret
 
 load_dotenv()
@@ -26,7 +24,7 @@ Rules:
 
 Task: {task_description}
 """
-    response = response = get_groq_client().chat.completions.create(
+    response = get_groq_client().chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": prompt}],
     )
