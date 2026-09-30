@@ -1,4 +1,4 @@
-![CI](https://github.com/yourusername/your-repo-name/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/vishal0205/multi-agent-coding-assistant/actions/workflows/ci.yml/badge.svg)
 # Multi-Agent Coding Assistant
 
 A coding agent system where two independent AI models collaborate to write and verify code: a **coder agent** writes a solution, an **independent test generator agent** writes the tests, and a **supervisor loop** runs them together — retrying with self-correction until the code passes, all inside a sandboxed execution environment.
