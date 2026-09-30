@@ -9,7 +9,13 @@ from logger import save_task_result
 from config import get_secret
 
 load_dotenv()
-client = genai.Client(api_key=get_secret("GEMINI_API_KEY"))
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=get_secret("GEMINI_API_KEY"))
+    return _client
 
 MAX_ATTEMPTS = 5
 
@@ -21,7 +27,7 @@ def clean_code(raw: str) -> str:
 def call_gemini(prompt: str, max_retries: int = 3) -> str:
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.models.generate_content(model="gemini-3.5-flash-lite", contents=prompt)
+            response = get_client().models.generate_content(model="gemini-3.5-flash-lite", contents=prompt)
             return response.text
         except genai_errors.ServerError as e:
             wait = 2 ** attempt

@@ -1,11 +1,18 @@
 import os
 from dotenv import load_dotenv
 from groq import Groq
+from groq import Groq
+from dotenv import load_dotenv
 from config import get_secret
 
 load_dotenv()
-groq_client = Groq(api_key=get_secret("GROQ_API_KEY"))
+_groq_client = None
 
+def get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq(api_key=get_secret("GROQ_API_KEY"))
+    return _groq_client
 
 def generate_test_cases(task_description: str, num_tests: int = 5) -> str:
     prompt = f"""You are a test-writing assistant. Given a coding task, write exactly {num_tests} Python test cases using plain `assert` statements.
@@ -19,7 +26,7 @@ Rules:
 
 Task: {task_description}
 """
-    response = groq_client.chat.completions.create(
+    response = response = get_groq_client().chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": prompt}],
     )
