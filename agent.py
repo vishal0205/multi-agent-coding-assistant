@@ -113,8 +113,8 @@ def run_tests(solution_code: str, test_code: str) -> tuple[bool, str]:
 
 
 def solve_task(task_description: str) -> dict:
-    """Supervisor agent: gets tests from the test generator agent, then runs the generate -> test -> fix loop."""
-    print(f"\n[Supervisor] Requesting test cases from test generator agent...")
+    """Supervisor: generate tests, execute code, and repair failures up to MAX_ATTEMPTS."""
+    print("\n[Supervisor] Requesting test cases from test generator agent...")
     test_code = generate_test_cases(task_description)
     print(f"[Supervisor] Test cases received:\n{test_code}\n")
 
@@ -123,19 +123,39 @@ def solve_task(task_description: str) -> dict:
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         passed, output = run_tests(code, test_code)
-        attempts_log.append({"attempt": attempt, "code": code, "test_code": test_code, "passed": passed, "output": output})
+        attempts_log.append({
+            "attempt": attempt,
+            "code": code,
+            "test_code": test_code,
+            "passed": passed,
+            "output": output,
+        })
+
         print(f"--- Attempt {attempt} ---")
         print(code)
         print(f"Result: {'PASSED' if passed else 'FAILED'}")
+
         if not passed:
             print(f"Output: {output.strip()[:300]}")
 
         if passed:
-            return {"success": True, "attempts": attempt, "test_code": test_code, "log": attempts_log}
+            return {
+                "success": True,
+                "attempts": attempt,
+                "test_code": test_code,
+                "log": attempts_log,
+            }
 
-        code = fix_code(task_description, code, output)
+        # Do not generate a correction that will never be executed.
+        if attempt < MAX_ATTEMPTS:
+            code = fix_code(task_description, code, output)
 
-    return {"success": False, "attempts": MAX_ATTEMPTS, "test_code": test_code, "log": attempts_log}
+    return {
+        "success": False,
+        "attempts": MAX_ATTEMPTS,
+        "test_code": test_code,
+        "log": attempts_log,
+    }
 
 if __name__ == "__main__":
     task_id = "task_01_flatten"
