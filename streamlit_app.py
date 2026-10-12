@@ -1,7 +1,7 @@
 import streamlit as st
 import uuid
-
-from agent import solve_task, docker_available
+from agent import docker_available
+from graph_agent import solve_task_graph
 from logger import load_all_results, save_task_result
 
 st.set_page_config(page_title="Multi-Agent Coding Assistant", page_icon="🤖", layout="centered")
@@ -35,7 +35,7 @@ task = st.text_area(
 if st.button("Solve", type="primary") and task.strip():
     try:
         with st.spinner("Running the coding agents and supervisor..."):
-            result = solve_task(task)
+            result = solve_task_graph(task)
 
         task_id = f"ui_{uuid.uuid4().hex[:12]}"
         save_task_result(task_id, task, result)
