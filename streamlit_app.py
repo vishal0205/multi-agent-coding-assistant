@@ -93,7 +93,11 @@ st.divider()
 st.subheader("Benchmark results")
 st.caption("Precomputed results from a 12-task benchmark of increasing difficulty.")
 
-results = load_all_results()
+results = [
+    result
+    for result in load_all_results()
+    if result["task_id"].startswith("task_")
+]
 if results:
     passed = sum(1 for r in results if r["success"])
     avg_attempts = sum(r["attempts_taken"] for r in results) / len(results)
