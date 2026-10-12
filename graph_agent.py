@@ -1,8 +1,10 @@
 from typing import TypedDict
 
 from agent import MAX_ATTEMPTS, fix_code, generate_code, run_tests
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from test_generator import generate_test_cases
+from langgraph.checkpoint.memory import InMemorySaver
 
 
 class CodingAgentState(TypedDict):
@@ -69,7 +71,7 @@ def route_after_execution(state: CodingAgentState) -> str:
 
     return "repair"
 
-def build_graph():
+def build_graph(checkpointer=None):
     """Build and compile the coding-agent workflow."""
     builder = StateGraph(CodingAgentState)
 
@@ -93,12 +95,13 @@ def build_graph():
 
     builder.add_edge("repair_code", "execute_code")
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 def solve_task_graph(task_description: str) -> dict:
-    """Run the LangGraph workflow and return the existing result format."""
-    graph = build_graph()
-
+    """Run the LangGraph workflow with in-memory checkpointing."""
+    checkpointer = InMemorySaver()
+    graph = build_graph(checkpointer=checkpointer)
+    config = {"configurable": {"thread_id": "coding-task"}}
     initial_state: CodingAgentState = {
         "task_description": task_description,
         "test_code": "",
@@ -110,7 +113,7 @@ def solve_task_graph(task_description: str) -> dict:
         "success": False,
     }
 
-    final_state = graph.invoke(initial_state)
+    final_state = graph.invoke(initial_state, config=config)
 
     return {
         "success": final_state["success"],

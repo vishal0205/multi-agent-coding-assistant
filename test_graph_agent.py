@@ -95,3 +95,49 @@ def test_graph_stops_at_max_attempts():
     assert result["attempts"] == graph_agent.MAX_ATTEMPTS
     assert len(result["log"]) == graph_agent.MAX_ATTEMPTS
     assert run_tests.call_count == graph_agent.MAX_ATTEMPTS
+
+def test_graph_saves_checkpoint():
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    checkpointer = InMemorySaver()
+    graph = graph_agent.build_graph(checkpointer=checkpointer)
+
+    config = {"configurable": {"thread_id": "checkpoint-test"}}
+
+    with (
+        patch.object(
+            graph_agent,
+            "generate_test_cases",
+            return_value="assert solution() == 1",
+        ),
+        patch.object(
+            graph_agent,
+            "generate_code",
+            return_value="def solution(): return 1",
+        ),
+        patch.object(
+            graph_agent,
+            "run_tests",
+            return_value=(True, ""),
+        ),
+    ):
+        result = graph.invoke(
+            {
+                "task_description": "Return 1",
+                "test_code": "",
+                "code": "",
+                "execution_output": "",
+                "passed": False,
+                "attempts": 0,
+                "attempts_log": [],
+                "success": False,
+            },
+            config=config,
+        )
+
+    checkpoint = checkpointer.get(config)
+
+    assert result["success"] is True
+    assert checkpoint is not None
+    assert checkpoint["channel_values"]["attempts"] == 1
+    assert checkpoint["channel_values"]["success"] is True
