@@ -1,8 +1,8 @@
 import streamlit as st
-import time
-from agent import generate_code, fix_code, run_tests, docker_available, MAX_ATTEMPTS
-from test_generator import generate_test_cases
-from logger import load_all_results
+import uuid
+
+from agent import solve_task, docker_available
+from logger import load_all_results, save_task_result
 
 st.set_page_config(page_title="Multi-Agent Coding Assistant", page_icon="🤖", layout="centered")
 
@@ -34,41 +34,47 @@ task = st.text_area(
 # --- Solve button with error handling ---
 if st.button("Solve", type="primary") and task.strip():
     try:
-        with st.status("Generating test cases (test generator agent)...", expanded=True) as status:
-            test_code = generate_test_cases(task)
-            st.code(test_code, language="python")
-            status.update(label="Test cases generated", state="complete")
+        with st.spinner("Running the coding agents and supervisor..."):
+            result = solve_task(task)
 
-        code = generate_code(task)
-        success = False
+        task_id = f"ui_{uuid.uuid4().hex[:12]}"
+        save_task_result(task_id, task, result)
 
-        for attempt in range(1, MAX_ATTEMPTS + 1):
-            with st.status(f"Attempt {attempt}: running code against tests...", expanded=True) as status:
-                st.code(code, language="python")
-                passed, output = run_tests(code, test_code)
-
-                if passed:
-                    status.update(label=f"Attempt {attempt}: PASSED", state="complete")
-                    success = True
-                    break
-                else:
-                    status.update(label=f"Attempt {attempt}: FAILED — retrying", state="error")
-                    st.text(output.strip()[:400])
-                    code = fix_code(task, code, output)
+        st.subheader("Generated tests")
+        st.code(result["test_code"], language="python")
 
         st.divider()
-        if success:
-            st.success(f"Solved in {attempt} attempt(s)")
-            st.subheader("Final solution")
-            st.code(code, language="python")
+
+        if result["success"]:
+            st.success(f"Solved in {result['attempts']} attempt(s)")
         else:
-            st.error(f"Could not solve within {MAX_ATTEMPTS} attempts")
-            st.subheader("Last attempted solution")
-            st.code(code, language="python")
+            st.error(
+                f"Could not solve within {result['attempts']} attempt(s)"
+            )
+
+        if result["log"]:
+            st.subheader("Execution history")
+
+            for entry in result["log"]:
+                label = (
+                    f"Attempt {entry['attempt']}: "
+                    f"{'PASSED' if entry['passed'] else 'FAILED'}"
+                )
+
+                with st.expander(label):
+                    st.code(entry["code"], language="python")
+                    st.text(entry["output"][:1000])
+
+            st.subheader(
+                "Final solution" if result["success"]
+                else "Last attempted solution"
+            )
+            st.code(result["log"][-1]["code"], language="python")
 
     except Exception as e:
         error_msg = str(e).lower()
         st.divider()
+
         if "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
             st.error("The AI service has hit its free-tier request limit for right now. Please try again in a few minutes.")
         elif "503" in error_msg or "unavailable" in error_msg:
@@ -77,6 +83,7 @@ if st.button("Solve", type="primary") and task.strip():
             st.error("The request took too long and timed out. Please try again.")
         else:
             st.error("Something went wrong while processing this task. Please try again, or try a different task description.")
+
         with st.expander("Technical details (for debugging)"):
             st.text(str(e))
 
