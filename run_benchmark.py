@@ -1,6 +1,6 @@
 import time
 from tasks import TASKS
-from agent import solve_task
+from graph_agent import solve_task_graph
 from logger import save_task_result
 
 def run_benchmark():
@@ -13,7 +13,7 @@ def run_benchmark():
         print(f"{'='*60}")
 
         start = time.time()
-        result = solve_task(task["description"])
+        result = solve_task_graph(task["description"])
         duration = time.time() - start
 
         save_task_result(task["id"], task["description"], result)
