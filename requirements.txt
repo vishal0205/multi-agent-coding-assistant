@@ -3,3 +3,4 @@ python-dotenv==1.0.1
 groq
 streamlit
 langgraph
+langgraph-checkpoint-sqlite==3.1.1
