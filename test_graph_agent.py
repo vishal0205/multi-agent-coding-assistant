@@ -294,3 +294,103 @@ def test_persistent_solver_returns_result_and_saves_checkpoint(tmp_path):
         assert checkpoint["channel_values"]["success"] is True
     finally:
         connection.close()
+
+def test_persistent_solver_isolates_different_task_ids(tmp_path):
+    db_path = tmp_path / "isolated-checkpoints.sqlite"
+
+    with (
+        patch.object(
+            graph_agent,
+            "generate_test_cases",
+            return_value="assert solution() == 1",
+        ),
+        patch.object(
+            graph_agent,
+            "generate_code",
+            return_value="def solution(): return 1",
+        ),
+        patch.object(
+            graph_agent,
+            "run_tests",
+            return_value=(True, ""),
+        ),
+    ):
+        first_result = graph_agent.solve_task_graph_persistent(
+            "First task",
+            task_id="isolation-task-one",
+            db_path=str(db_path),
+        )
+        second_result = graph_agent.solve_task_graph_persistent(
+            "Second task",
+            task_id="isolation-task-two",
+            db_path=str(db_path),
+        )
+
+    assert first_result["success"] is True
+    assert second_result["success"] is True
+
+    connection = sqlite3.connect(db_path)
+    try:
+        saver = SqliteSaver(connection)
+
+        first_checkpoint = saver.get(
+            {"configurable": {"thread_id": "isolation-task-one"}}
+        )
+        second_checkpoint = saver.get(
+            {"configurable": {"thread_id": "isolation-task-two"}}
+        )
+
+        assert first_checkpoint is not None
+        assert second_checkpoint is not None
+        assert (
+            first_checkpoint["channel_values"]["task_description"]
+            == "First task"
+        )
+        assert (
+            second_checkpoint["channel_values"]["task_description"]
+            == "Second task"
+        )
+    finally:
+        connection.close()
+
+def test_persistent_solver_repeated_task_id_uses_new_task_input(tmp_path):
+    db_path = tmp_path / "repeated-checkpoint.sqlite"
+
+    with (
+        patch.object(
+            graph_agent,
+            "generate_test_cases",
+            side_effect=[
+                "assert solution() == 1",
+                "assert solution() == 2",
+            ],
+        ),
+        patch.object(
+            graph_agent,
+            "generate_code",
+            side_effect=[
+                "def solution(): return 1",
+                "def solution(): return 2",
+            ],
+        ),
+        patch.object(
+            graph_agent,
+            "run_tests",
+            return_value=(True, ""),
+        ),
+    ):
+        first_result = graph_agent.solve_task_graph_persistent(
+            "First task",
+            task_id="reused-task-id",
+            db_path=str(db_path),
+        )
+        second_result = graph_agent.solve_task_graph_persistent(
+            "Second task",
+            task_id="reused-task-id",
+            db_path=str(db_path),
+        )
+
+    assert first_result["success"] is True
+    assert second_result["success"] is True
+    assert first_result["test_code"] == "assert solution() == 1"
+    assert second_result["test_code"] == "assert solution() == 2"
