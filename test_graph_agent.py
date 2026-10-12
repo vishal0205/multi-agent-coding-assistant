@@ -141,3 +141,29 @@ def test_graph_saves_checkpoint():
     assert checkpoint is not None
     assert checkpoint["channel_values"]["attempts"] == 1
     assert checkpoint["channel_values"]["success"] is True
+
+def test_graph_records_execution_duration():
+    with (
+        patch.object(
+            graph_agent,
+            "generate_test_cases",
+            return_value="assert solution() == 1",
+        ),
+        patch.object(
+            graph_agent,
+            "generate_code",
+            return_value="def solution(): return 1",
+        ),
+        patch.object(
+            graph_agent,
+            "run_tests",
+            return_value=(True, ""),
+        ),
+    ):
+        result = graph_agent.solve_task_graph("Return 1")
+
+    assert result["success"] is True
+    assert len(result["log"]) == 1
+    assert "duration_sec" in result["log"][0]
+    assert isinstance(result["log"][0]["duration_sec"], float)
+    assert result["log"][0]["duration_sec"] >= 0

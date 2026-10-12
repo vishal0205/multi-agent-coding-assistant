@@ -1,3 +1,4 @@
+import time
 from typing import TypedDict
 
 from agent import MAX_ATTEMPTS, fix_code, generate_code, run_tests
@@ -31,7 +32,10 @@ def generate_code_node(state: CodingAgentState) -> dict:
 
 def execute_code_node(state: CodingAgentState) -> dict:
     """Run the current solution against the generated tests."""
+    start_time = time.perf_counter()
     passed, output = run_tests(state["code"], state["test_code"])
+    duration_sec = round(time.perf_counter() - start_time, 4)
+
     attempt = state["attempts"] + 1
 
     entry = {
@@ -40,6 +44,7 @@ def execute_code_node(state: CodingAgentState) -> dict:
         "test_code": state["test_code"],
         "passed": passed,
         "output": output,
+        "duration_sec": duration_sec,
     }
 
     return {
