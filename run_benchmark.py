@@ -1,10 +1,13 @@
 import time
+import uuid
+
 from tasks import TASKS
-from graph_agent import solve_task_graph
+from graph_agent import solve_task_graph_persistent
 from logger import save_task_result
 
 def run_benchmark():
     summary = []
+    run_id = uuid.uuid4().hex[:12]
     print(f"Running benchmark on {len(TASKS)} tasks...\n")
 
     for i, task in enumerate(TASKS, 1):
@@ -13,7 +16,11 @@ def run_benchmark():
         print(f"{'='*60}")
 
         start = time.time()
-        result = solve_task_graph(task["description"])
+        checkpoint_id = f"benchmark_{run_id}_{task['id']}"
+        result = solve_task_graph_persistent(
+            task["description"],
+            task_id=checkpoint_id,
+        )
         duration = time.time() - start
 
         save_task_result(task["id"], task["description"], result)
