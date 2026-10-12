@@ -1,12 +1,9 @@
 import time
 from typing import TypedDict
-
 from agent import MAX_ATTEMPTS, fix_code, generate_code, run_tests
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from test_generator import generate_test_cases
-from langgraph.checkpoint.memory import InMemorySaver
-
 
 class CodingAgentState(TypedDict):
     task_description: str
@@ -104,6 +101,8 @@ def build_graph(checkpointer=None):
 
 def solve_task_graph(task_description: str) -> dict:
     """Run the LangGraph workflow with in-memory checkpointing."""
+    task_start_time = time.perf_counter()
+
     checkpointer = InMemorySaver()
     graph = build_graph(checkpointer=checkpointer)
     config = {"configurable": {"thread_id": "coding-task"}}
@@ -125,4 +124,5 @@ def solve_task_graph(task_description: str) -> dict:
         "attempts": final_state["attempts"],
         "test_code": final_state["test_code"],
         "log": final_state["attempts_log"],
+        "duration_sec": round(time.perf_counter() - task_start_time, 4),
     }

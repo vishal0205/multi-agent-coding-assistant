@@ -167,3 +167,28 @@ def test_graph_records_execution_duration():
     assert "duration_sec" in result["log"][0]
     assert isinstance(result["log"][0]["duration_sec"], float)
     assert result["log"][0]["duration_sec"] >= 0
+
+def test_graph_records_total_task_duration():
+    with (
+        patch.object(
+            graph_agent,
+            "generate_test_cases",
+            return_value="assert solution() == 1",
+        ),
+        patch.object(
+            graph_agent,
+            "generate_code",
+            return_value="def solution(): return 1",
+        ),
+        patch.object(
+            graph_agent,
+            "run_tests",
+            return_value=(True, ""),
+        ),
+    ):
+        result = graph_agent.solve_task_graph("Return 1")
+
+    assert result["success"] is True
+    assert "duration_sec" in result
+    assert isinstance(result["duration_sec"], float)
+    assert result["duration_sec"] >= 0
