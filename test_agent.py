@@ -1,53 +1,57 @@
-﻿from unittest.mock import patch
+﻿
+from unittest.mock import patch
 
 import agent
 
 
-def test_solve_task_succeeds_on_first_attempt():
+def test_run_tests_fails_closed_when_docker_is_unavailable():
     with (
-        patch.object(agent, "generate_test_cases", return_value="assert solution() == 1"),
-        patch.object(agent, "generate_code", return_value="def solution(): return 1"),
-        patch.object(agent, "run_tests", return_value=(True, "")) as run_tests,
-        patch.object(agent, "fix_code") as fix_code,
+        patch.object(agent.shutil, "which", return_value=None),
+        patch.object(agent, "run_tests_fallback") as fallback,
     ):
-        result = agent.solve_task("Return 1")
+        fallback.return_value = (
+            False,
+            "SANDBOX ERROR: Docker is unavailable. Generated code was not executed.",
+        )
 
-    assert result["success"] is True
-    assert result["attempts"] == 1
-    assert len(result["log"]) == 1
-    run_tests.assert_called_once()
-    fix_code.assert_not_called()
+        passed, output = agent.run_tests(
+            "def solution(): return 1",
+            "assert solution() == 1",
+        )
+
+    assert passed is False
+    assert "docker" in output.lower()
+    fallback.assert_called_once()
 
 
-def test_solve_task_repairs_and_then_succeeds():
+def test_run_tests_calls_docker_when_available():
     with (
-        patch.object(agent, "generate_test_cases", return_value="assert solution() == 1"),
-        patch.object(agent, "generate_code", return_value="def solution(): return 0"),
-        patch.object(agent, "run_tests", side_effect=[
-            (False, "AssertionError"),
-            (True, ""),
-        ]),
-        patch.object(agent, "fix_code", return_value="def solution(): return 1") as fix_code,
+        patch.object(agent.shutil, "which", return_value="docker"),
+        patch.object(agent, "docker_available", return_value=True),
+        patch.object(
+            agent.subprocess,
+            "run",
+            return_value=agent.subprocess.CompletedProcess(
+                args=["docker", "run"],
+                returncode=0,
+                stdout="All tests passed",
+                stderr="",
+            ),
+        ) as docker_run,
     ):
-        result = agent.solve_task("Return 1")
+        passed, output = agent.run_tests(
+            "def solution(): return 1",
+            "assert solution() == 1",
+        )
 
-    assert result["success"] is True
-    assert result["attempts"] == 2
-    assert len(result["log"]) == 2
-    fix_code.assert_called_once()
+    assert passed is True
+    assert output == "All tests passed"
+    docker_run.assert_called_once()
 
-
-def test_solve_task_stops_after_max_attempts_without_extra_repair():
-    with (
-        patch.object(agent, "generate_test_cases", return_value="assert solution() == 1"),
-        patch.object(agent, "generate_code", return_value="def solution(): return 0"),
-        patch.object(agent, "run_tests", return_value=(False, "AssertionError")) as run_tests,
-        patch.object(agent, "fix_code", return_value="def solution(): return 0") as fix_code,
-    ):
-        result = agent.solve_task("Return 1")
-
-    assert result["success"] is False
-    assert result["attempts"] == agent.MAX_ATTEMPTS
-    assert len(result["log"]) == agent.MAX_ATTEMPTS
-    assert run_tests.call_count == agent.MAX_ATTEMPTS
-    assert fix_code.call_count == agent.MAX_ATTEMPTS - 1
+    command = docker_run.call_args.args[0]
+    assert command[0] == "docker"
+    assert command[1] == "run"
+    assert "--network" in command
+    assert "none" in command
+    assert "--read-only" in command
+    assert "--cap-drop" in command

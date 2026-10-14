@@ -10,9 +10,6 @@ from google import genai
 from google.genai import errors as genai_errors
 
 from config import get_secret
-from logger import save_task_result
-from test_generator import generate_test_cases
-
 
 load_dotenv()
 
@@ -242,65 +239,3 @@ def run_tests(
                 temp_path.unlink(missing_ok=True)
             except OSError:
                 pass
-
-
-def solve_task(task_description: str) -> dict:
-    """Generate tests, run the solution, and retry failed solutions."""
-    print("\n[Supervisor] Requesting test cases from test generator agent...")
-    test_code = generate_test_cases(task_description)
-    print(f"[Supervisor] Test cases received:\n{test_code}\n")
-
-    attempts_log = []
-    code = generate_code(task_description)
-
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        passed, output = run_tests(code, test_code)
-        attempts_log.append(
-            {
-                "attempt": attempt,
-                "code": code,
-                "test_code": test_code,
-                "passed": passed,
-                "output": output,
-            }
-        )
-
-        print(f"--- Attempt {attempt} ---")
-        print(code)
-        print(f"Result: {'PASSED' if passed else 'FAILED'}")
-
-        if not passed:
-            print(f"Output: {output.strip()[:300]}")
-
-        if passed:
-            return {
-                "success": True,
-                "attempts": attempt,
-                "test_code": test_code,
-                "log": attempts_log,
-            }
-
-        if attempt < MAX_ATTEMPTS:
-            code = fix_code(task_description, code, output)
-
-    return {
-        "success": False,
-        "attempts": MAX_ATTEMPTS,
-        "test_code": test_code,
-        "log": attempts_log,
-    }
-
-
-if __name__ == "__main__":
-    task_id = "task_01_flatten"
-    task = (
-        "Write a function called flatten(lst) that flattens a nested list "
-        "of arbitrary depth into a single flat list."
-    )
-    result = solve_task(task)
-    status = "SUCCESS" if result["success"] else "FAILED"
-    print(
-        f"\n=== FINAL RESULT: {status} in "
-        f"{result['attempts']} attempt(s) ==="
-    )
-    save_task_result(task_id, task, result)
