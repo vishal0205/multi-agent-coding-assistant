@@ -1,112 +1,195 @@
 ![CI](https://github.com/vishal0205/multi-agent-coding-assistant/actions/workflows/ci.yml/badge.svg)
+
 # Multi-Agent Coding Assistant
 
-A coding agent system where two independent AI models collaborate to write and verify code: a **coder agent** writes a solution, an **independent test generator agent** writes the tests, and a **supervisor loop** runs them together — retrying with self-correction until the code passes, all inside a sandboxed execution environment.
+A multi-agent coding system that uses **Google Gemini** to generate Python solutions and **Groq GPT-OSS-120B** to independently generate tests. A **LangGraph workflow** executes the solution in a restricted Docker sandbox, retries failed solutions with feedback, and records execution history with persistent SQLite checkpoints.
 
+**[Live Demo](https://multi-agent-coding-assistant-9mreb4hcxzwjaximxgf8d4.streamlit.app/)** · **[GitHub Repository](https://github.com/vishal0205/multi-agent-coding-assistant)**
 
-**[Live demo](https://multi-agent-coding-assistant-9mreb4hcxzwjaximxgf8d4.streamlit.app/)** · **[Benchmark results](#benchmark-results)**
+## Key Features
 
----
-
-## Why two independent agents?
-
-A single model writing both the code and its own tests can pass its own blind spots along with it. Using an independent model (a different provider, different weights) to write the tests means the tests weren't shaped by the same assumptions as the solution — closer to how a second engineer reviewing your code catches things you wouldn't catch reviewing yourself.
+- **Independent code and test generation:** Gemini generates solutions while Groq generates test assertions independently.
+- **Iterative code repair:** A supervisor workflow feeds execution failures back to the coder for up to five attempts.
+- **LangGraph orchestration:** Models task execution as a graph with generation, execution, repair, and completion stages.
+- **Persistent checkpoints:** Uses SQLite-backed LangGraph checkpointing to persist workflow state by task ID.
+- **Sandboxed execution:** Runs generated code in Docker with network isolation, resource limits, a read-only filesystem, dropped capabilities, an unprivileged user, and execution timeouts.
+- **Execution history:** Records generated code, tests, attempt results, and execution output in JSON logs.
+- **Interactive interface:** Streamlit UI for submitting tasks and viewing generated tests, solutions, and attempt history.
+- **Automated checks:** GitHub Actions builds the sandbox image, runs sandbox safety checks, and checks Python syntax. See the CI workflow for the exact checks configured on the current branch.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Task input] --> B[Test generator agent<br/>Groq / GPT-OSS-120B]
-    A --> C[Coder agent<br/>Gemini 3.5 Flash-Lite]
-    B --> D[Sandbox<br/>Docker locally, timeout-protected fallback in the cloud]
-    C --> D
-    D -->|pass| E[Logger<br/>saves code, tests, attempt history]
-    D -->|fail| F[Debugger<br/>diagnoses the error, sends a fix back]
-    F --> C
+    A[Task Description] --> B[Groq Test Generator]
+    B --> C[Gemini Code Generator]
+    C --> D[Docker Sandbox]
+    D --> E{Tests Pass?}
+    E -->|Yes| F[Record Result]
+    E -->|No, attempts remain| G[Repair Solution]
+    G --> D
+    E -->|Retry limit reached| H[Record Failure]
+    F --> I[JSON Logs and SQLite Checkpoints]
+    H --> I
 ```
-## How it works
 
-1. A task description (e.g. *"write a function that checks if a string is a palindrome"*) is sent to **two agents in parallel**:
-   - The **coder agent** (Gemini) writes a Python solution
-   - The **test generator agent** (Groq, running an open-weight GPT-OSS model) independently writes a set of test assertions for the same task, including edge cases
-2. The **supervisor** runs the generated code against the generated tests inside an isolated sandbox
-3. If the tests fail, the error output is sent back to the coder agent, which attempts a fix — this repeats up to 5 times
-4. Every attempt (code, tests, pass/fail, error output) is logged to a JSON file per task
-5. Both agents are contractually required to name the function under test `solution`, so they agree on an interface regardless of how the task is phrased — this was a real bug found during testing (see [Known limitations](#known-limitations--failure-analysis))
+## How It Works
 
-## Safety: sandboxed execution
+1. **Generate tests:** Groq generates test assertions for the requested Python task.
+2. **Generate code:** Gemini generates a solution using the shared `solution()` function interface.
+3. **Execute safely:** The generated solution and tests run in the configured Docker sandbox.
+4. **Repair failures:** Failed executions return error output to Gemini, which generates a corrected solution. The workflow permits up to five execution attempts.
+5. **Persist results:** The workflow records attempt history and execution duration, while LangGraph checkpointing stores workflow state in SQLite.
 
-Since the coder agent's output is untrusted, generated code never runs directly on the host machine:
+The test generator and code generator use different model providers to reduce the risk of both agents sharing the same assumptions. Generated tests are not a guarantee of correctness; benchmark results depend on the selected tasks and generated assertions.
 
-- **Locally:** executed inside a Docker container with `--network none` (no internet access), memory and CPU limits, and a hard timeout
-- **In the cloud (Streamlit Community Cloud does not support Docker):** falls back to a timeout-protected subprocess. This is a conscious tradeoff, documented here rather than hidden — full container isolation is used wherever the environment supports it, and the app detects at runtime which mode it's in
+## Sandbox Security
 
-This was verified, not just assumed:
-- An infinite-loop payload was caught and killed by the timeout instead of hanging the process
-- A network-access attempt from inside the sandbox failed as expected (`Temporary failure in name resolution`)
+Generated code is untrusted, so the local execution path uses a restricted Docker container with:
 
-## Tech stack
+- Network disabled (`--network none`)
+- Memory and CPU limits
+- Process-count limit
+- Read-only container filesystem
+- Dropped Linux capabilities
+- `no-new-privileges`
+- Unprivileged user (`UID 10001`)
+- A read-only bind mount for the generated script
+- Execution timeout and container termination handling
 
-- **Coder agent:** Google Gemini API (`gemini-3.5-flash-lite` — chosen over the full Flash model for its much higher free-tier daily quota, making the benchmark actually reproducible without hitting rate limits; swapping back to `gemini-3.6-flash` is a one-line change)
-- **Test generator agent:** Groq API (`openai/gpt-oss-120b`)
-- **Sandbox:** Docker (local) / subprocess with timeout (cloud fallback)
-- **UI:** Streamlit
-- **Logging:** local JSON files, one per task
+**Fail-closed behavior:** If Docker is unavailable or the sandbox image cannot be inspected, the application does not execute generated code on the host. Execution returns a sandbox error instead.
 
-## Benchmark results
+The sandbox reduces risk but should not be considered a guarantee against every possible container escape or host-level threat. Do not run untrusted generated code outside the configured isolation boundary.
 
-12 tasks spanning easy (palindrome check, FizzBuzz) to hard (topological sort, LRU cache).
+## Benchmark Results
+
+The project includes a custom benchmark of 12 Python coding tasks, including palindrome checks, FizzBuzz, LRU cache, and topological sort.
 
 | Metric | Result |
-|---|---|
+|---|---:|
 | Tasks solved | 12/12 |
-| Average attempts per task | 1.0 |
+| Average execution attempts per task | 1.0 |
 
-**Note on this result:** every task passed on the first attempt, meaning the retry/self-correction loop wasn't actually exercised by this benchmark but when you try with harder questions it hits to second or third attemps to pass all the testcases. It has been separately verified working: during development, an interface mismatch between the coder and test generator agents (see [Known limitations](#known-limitations--failure-analysis)) took 2 attempts to resolve via the same retry mechanism. A harder or more ambiguous task set would likely surface more retries; this benchmark's 12 tasks turned out to be solvable in one pass by the current model.
+In this recorded run, all 12 tasks passed on the first attempt. Therefore, this benchmark demonstrates first-attempt success on the selected task set; it does **not** measure how frequently the repair loop succeeds after failures. The repair path was separately exercised during development when an agent interface mismatch required a second attempt.
 
-Run it yourself:
+To run the benchmark locally:
+
 ```bash
 python run_benchmark.py
 ```
 
-Full per-task logs are saved to `logs/`.
+The benchmark writes per-task JSON results under `logs/` and uses SQLite-backed workflow checkpoints under `checkpoints/`.
 
-## Known limitations & failure analysis
+## Technology Stack
 
-Being transparent about where this breaks was a deliberate design goal, not an afterthought:
+- **Language:** Python
+- **Code generation:** Google Gemini API
+- **Test generation:** Groq API with `openai/gpt-oss-120b`
+- **Agent orchestration:** LangGraph
+- **Checkpointing:** SQLite and LangGraph checkpointing
+- **Sandbox:** Docker
+- **UI:** Streamlit
+- **Logging:** JSON task logs
+- **Testing:** pytest and sandbox safety checks
+- **CI:** GitHub Actions
 
-- **Interface mismatches between independent agents.** Early on, the coder agent and test generator agent would sometimes guess different function names for the same vague task (e.g. `add_two_numbers` vs. `sum_two_numbers`), causing every attempt to fail on a `NameError` that had nothing to do with the code's actual correctness. Fixed by requiring both agents to always name the function under test `solution`.
-- **Cloud sandbox is weaker than local.** The Streamlit Cloud deployment cannot run Docker, so generated code there runs with a timeout but without full network/resource isolation. This is disclosed above rather than glossed over.
-- **No cost/latency tracking yet** on a per-task basis — see future enhancements.
+## Run Locally
 
-## Future enhancements
+### Prerequisites
 
-- **Reviewer agent:** a code-quality check between the coder and the sandbox, catching obvious issues before spending a test cycle. Scoped out of v1 deliberately — an additional LLM call per task adds cost and latency, and the industry-standard advice on multi-agent design is to add agents only when the benefit clearly outweighs that cost. Worth revisiting with real usage data.
-- **Cost & latency tracking** per task, alongside pass/fail, to make the tradeoffs of the retry loop measurable rather than assumed.
-- **Provider-agnostic model config** (already partially proven out — the coder agent was temporarily run against a local Ollama model during development when a cloud API hit its free-tier quota).
+- Python 3.11
+- Docker Desktop or a working Docker Engine
+- Gemini API key
+- Groq API key
 
-## Running locally
+### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
-cd coding-agent
+git clone https://github.com/vishal0205/multi-agent-coding-assistant.git
+cd multi-agent-coding-assistant
+```
+
+### 2. Create and activate a virtual environment
+
+Windows PowerShell:
+
+```powershell
 python -m venv venv
-venv\Scripts\activate        # or source venv/bin/activate on Mac/Linux
-pip install -r requirements.txt
+.\venv\Scripts\Activate.ps1
 ```
 
-Create a `.env` file:
-```
-GEMINI_API_KEY=your_key_here
-GROQ_API_KEY=your_key_here
+macOS/Linux:
+
+```bash
+python -m venv venv
+source venv/bin/activate
 ```
 
-Run the app:
+### 3. Install dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### 4. Configure API keys
+
+Create a `.env` file in the project root:
+
+```dotenv
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+```
+
+Keep `.env` private. Never commit real API keys to GitHub.
+
+### 5. Build the sandbox image
+
+Start Docker, then run:
+
+```bash
+docker build -t coding-agent-sandbox:latest .
+```
+
+The application expects Docker and the sandbox image to be available for generated-code execution.
+
+### 6. Launch the application
+
 ```bash
 streamlit run streamlit_app.py
 ```
 
-Or run the benchmark directly:
+### 7. Run the benchmark
+
+In a separate terminal with the environment activated:
+
 ```bash
 python run_benchmark.py
 ```
+
+### 8. Run automated tests
+
+```bash
+python -m pytest -q
+```
+
+The sandbox safety script can also be run with:
+
+```bash
+python test_sandbox_safety.py
+```
+
+## Known Limitations
+
+- **Benchmark scope:** The 12-task benchmark is a small, self-built evaluation set and does not establish general coding accuracy.
+- **Generated test quality:** Independently generated tests can still miss edge cases or encode incorrect assumptions.
+- **Model and API limits:** Execution depends on provider availability, quotas, model behavior, and API credentials.
+- **Docker dependency:** Generated code is not executed if Docker or the expected sandbox image is unavailable.
+- **Cost and latency metrics:** Per-task API cost tracking is not currently implemented.
+
+## Future Improvements
+
+- Add per-task token usage, API cost, and end-to-end latency metrics.
+- Expand the benchmark with harder tasks and additional edge cases.
+- Evaluate generated tests for coverage and quality.
+- Add more structured tracing for workflow nodes and repair attempts.
+- Explore additional model providers through configurable model settings.
