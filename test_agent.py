@@ -1,7 +1,7 @@
-﻿
-from unittest.mock import patch
+﻿from unittest.mock import patch
 
 import agent
+from graph_agent import route_after_execution
 
 
 def test_run_tests_fails_closed_when_docker_is_unavailable():
@@ -55,3 +55,46 @@ def test_run_tests_calls_docker_when_available():
     assert "none" in command
     assert "--read-only" in command
     assert "--cap-drop" in command
+
+
+def test_solve_task_stops_after_max_attempts_without_extra_repair():
+    state = {
+        "passed": False,
+        "execution_output": "AssertionError",
+        "attempts": agent.MAX_ATTEMPTS,
+    }
+
+    assert route_after_execution(state) == "finish"
+
+
+def test_route_after_execution_repairs_after_ordinary_failure():
+    state = {
+        "passed": False,
+        "execution_output": "AssertionError",
+        "attempts": 1,
+    }
+
+    assert route_after_execution(state) == "repair"
+
+
+def test_route_after_execution_stops_immediately_on_sandbox_error():
+    state = {
+        "passed": False,
+        "execution_output": (
+            "SANDBOX ERROR: Docker is unavailable. "
+            "Generated code was not executed."
+        ),
+        "attempts": 1,
+    }
+
+    assert route_after_execution(state) == "finish"
+
+
+def test_route_after_execution_finishes_on_success():
+    state = {
+        "passed": True,
+        "execution_output": "",
+        "attempts": 1,
+    }
+
+    assert route_after_execution(state) == "finish"
