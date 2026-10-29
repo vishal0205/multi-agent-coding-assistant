@@ -243,7 +243,6 @@ def run_tests(
             except OSError:
                 pass
 
-
 def solve_task(task_description: str) -> dict:
     """Generate tests, run the solution, and retry failed solutions."""
     print("\n[Supervisor] Requesting test cases from test generator agent...")
@@ -280,6 +279,16 @@ def solve_task(task_description: str) -> dict:
                 "log": attempts_log,
             }
 
+        # Infrastructure failures cannot be fixed by regenerating code.
+        if "SANDBOX ERROR:" in output:
+            return {
+                "success": False,
+                "attempts": attempt,
+                "test_code": test_code,
+                "log": attempts_log,
+                "error": output,
+            }
+
         if attempt < MAX_ATTEMPTS:
             code = fix_code(task_description, code, output)
 
@@ -289,7 +298,6 @@ def solve_task(task_description: str) -> dict:
         "test_code": test_code,
         "log": attempts_log,
     }
-
 
 if __name__ == "__main__":
     task_id = "task_01_flatten"
