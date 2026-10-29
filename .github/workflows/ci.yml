@@ -20,6 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Run automated tests
+        run: python -m pytest -q
 
       - name: Build sandbox Docker image
         run: docker build -t coding-agent-sandbox .
