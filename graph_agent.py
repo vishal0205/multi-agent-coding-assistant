@@ -68,14 +68,18 @@ def repair_code_node(state: CodingAgentState) -> dict:
 
 
 def route_after_execution(state: CodingAgentState) -> str:
-    """Stop on success or at the retry limit; otherwise repair the solution."""
+    """Stop on success, sandbox errors, or the retry limit."""
     if state["passed"]:
+        return "finish"
+
+    if state["execution_output"].startswith("SANDBOX ERROR:"):
         return "finish"
 
     if state["attempts"] >= MAX_ATTEMPTS:
         return "finish"
 
     return "repair"
+
 
 def build_graph(checkpointer=None):
     """Build and compile the coding-agent workflow."""
